@@ -196,3 +196,119 @@ def json_eval_results(metric, json_directory, dataset):
             cocoapi_eval(v_json, coco_eval_style[i], anno_file=anno_file)
         else:
             logger.info("{} not exists!".format(v_json))
+
+
+def cocoapi_eval2(jsonfile, roidbs, cname2cid,
+        classwise=False):
+    """
+    Args:
+        max_dets (tuple): COCO evaluation maxDets.
+        classwise (bool): Whether per-category AP and draw P-R Curve or not.
+        sigmas (nparray): keypoint labelling sigmas.
+        use_area (bool): If gt annotations (eg. CrowdPose, AIC)
+                         do not have 'area', please set use_area=False.
+    """
+    from pycocotools.coco import COCO
+    try:
+        from .fast_cocoeval import FastCOCOeval as COCOeval
+    except:
+        from pycocotools.cocoeval import COCOeval
+
+    style = "bbox"
+    logger.info("Start evaluate...")
+    coco_gt = COCO(None)
+    # 将dataset的roidbs, cname2cid转为coco格式
+    categories = []
+    for label, label_id in cname2cid.items():
+        category_info = {'supercategory': 'none', 'id': label_id, 'name': label}
+        categories.append(category_info)
+    images = []
+    annotations = []
+    anno_id = 0
+    for image_id, img_data in enumerate(roidbs):
+        image_data = {
+            'file_name': img_data['im_file'],
+            'height': img_data["h"],
+            'width': img_data["w"],
+            'id': image_id
+        }
+        images.append(image_data)
+        gt_bbox, gt_class = img_data["gt_bbox"], img_data["gt_class"]
+        num_boxes = len(gt_bbox)
+        for i in range(num_boxes):
+            cls_id = int(gt_class[i, 0])
+            x1, y1, x2, y2 = gt_bbox[i, :]
+            xmin, ymin, w, h = float(x1), float(y1), float(x2-x1), float(y2-y1)
+            anno = {
+                'area': w * h,
+                'iscrowd': 0,
+                'bbox': [xmin, ymin, w, h],
+                'category_id': cls_id,
+                'ignore': 0,
+                'image_id': image_id, 
+                'id': anno_id
+            }
+            anno_id += 1
+            annotations.append(anno)
+    datasets = {
+            "images": images,
+            "type": "instances",
+            "annotations": annotations,
+            "categories": categories
+    }
+    coco_gt.dataset = datasets
+    coco_gt.createIndex()
+    # 
+    coco_dt = coco_gt.loadRes(jsonfile)
+    coco_eval = COCOeval(coco_gt, coco_dt, style)
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    coco_eval.summarize()
+    if classwise:
+        # Compute per-category AP and PR curve
+        try:
+            from terminaltables import AsciiTable
+        except Exception as e:
+            logger.error(
+                'terminaltables not found, plaese install terminaltables. '
+                'for example: `pip install terminaltables`.')
+            raise e
+        precisions = coco_eval.eval['precision']
+        cat_ids = coco_gt.getCatIds()
+        # precision: (iou, recall, cls, area range, max dets)
+        assert len(cat_ids) == precisions.shape[2]
+        results_per_category = []
+        for idx, catId in enumerate(cat_ids):
+            # area range index 0: all area ranges
+            # max dets index -1: typically 100 per image
+            nm = coco_gt.loadCats(catId)[0]
+            precision = precisions[:, :, idx, 0, -1]
+            precision = precision[precision > -1]
+            if precision.size:
+                ap = np.mean(precision)
+            else:
+                ap = float('nan')
+            results_per_category.append(
+                (str(nm["name"]), '{:0.3f}'.format(float(ap))))
+            pr_array = precisions[0, :, idx, 0, 2]
+            recall_array = np.arange(0.0, 1.01, 0.01)
+            draw_pr_curve(
+                pr_array,
+                recall_array,
+                out_dir=style + '_pr_curve',
+                file_name='{}_precision_recall_curve.jpg'.format(nm["name"]))
+
+        num_columns = min(6, len(results_per_category) * 2)
+        results_flatten = list(itertools.chain(*results_per_category))
+        headers = ['category', 'AP'] * (num_columns // 2)
+        results_2d = itertools.zip_longest(
+            *[results_flatten[i::num_columns] for i in range(num_columns)])
+        table_data = [headers]
+        table_data += [result for result in results_2d]
+        table = AsciiTable(table_data)
+        logger.info('Per-category of {} AP: \n{}'.format(style, table.table))
+        logger.info("per-category PR curve has output to {} folder.".format(
+            style + '_pr_curve'))
+    # flush coco evaluation result
+    sys.stdout.flush()
+    return coco_eval.stats

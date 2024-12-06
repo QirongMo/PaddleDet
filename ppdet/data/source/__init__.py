@@ -31,3 +31,4 @@ from .sniper_coco import SniperCOCODataSet
 from .dataset import ImageFolder
 from .pose3d_cmb import *
 from .culane import *
+from .yolo import YOLODataSet

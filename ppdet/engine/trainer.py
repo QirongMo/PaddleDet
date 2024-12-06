@@ -40,7 +40,7 @@ from ppdet.core.workspace import create
 from ppdet.utils.checkpoint import load_weight, load_pretrain_weight, convert_to_dict
 from ppdet.utils.visualizer import visualize_results, save_result
 from ppdet.metrics import get_infer_results, KeyPointTopDownCOCOEval, KeyPointTopDownCOCOWholeBadyHandEval, KeyPointTopDownMPIIEval, Pose3DEval
-from ppdet.metrics import Metric, COCOMetric, VOCMetric, WiderFaceMetric, RBoxMetric, JDEDetMetric, SNIPERCOCOMetric, CULaneMetric
+from ppdet.metrics import Metric, COCOMetric, VOCMetric, WiderFaceMetric, RBoxMetric, JDEDetMetric, SNIPERCOCOMetric, CULaneMetric, COCOMetric2
 from ppdet.data.source.sniper_coco import SniperCOCODataSet
 from ppdet.data.source.category import get_categories
 import ppdet.utils.stats as stats
@@ -291,7 +291,7 @@ class Trainer(object):
             self._metrics = []
             return
         classwise = self.cfg['classwise'] if 'classwise' in self.cfg else False
-        if self.cfg.metric == 'COCO' or self.cfg.metric == "SNIPERCOCO":
+        if self.cfg.metric in ['COCO', "SNIPERCOCO", 'COCO2']:
             # TODO: bias should be unified
             bias = 1 if self.cfg.get('bias', False) else 0
             output_eval = self.cfg['output_eval'] \
@@ -340,6 +340,18 @@ class Trainer(object):
                         bias=bias,
                         IouType=IouType,
                         save_prediction_only=save_prediction_only)
+                ]
+            elif self.cfg.metric == 'COCO2':
+                self._metrics = [
+                    COCOMetric2(
+                        dataset.img_datas, dataset.cname2cid,
+                        clsid2catid=clsid2catid,
+                        classwise=classwise,
+                        output_eval=output_eval,
+                        bias=bias,
+                        IouType=IouType,
+                        save_prediction_only=save_prediction_only,
+                        save_threshold=save_threshold)
                 ]
         elif self.cfg.metric == 'RBOX':
             # TODO: bias should be unified

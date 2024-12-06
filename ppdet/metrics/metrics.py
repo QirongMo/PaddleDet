@@ -26,7 +26,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .map_utils import prune_zero_padding, DetectionMAP
-from .coco_utils import get_infer_results, cocoapi_eval
+from .coco_utils import get_infer_results, cocoapi_eval, cocoapi_eval2
 from .widerface_utils import (face_eval_run, image_eval, img_pr_info,
                               dataset_pr_info, voc_ap)
 from ppdet.data.source.category import get_categories
@@ -37,7 +37,7 @@ logger = setup_logger(__name__)
 
 __all__ = [
     'Metric', 'COCOMetric', 'VOCMetric', 'WiderFaceMetric', 'get_infer_results',
-    'RBoxMetric', 'SNIPERCOCOMetric'
+    'RBoxMetric', 'SNIPERCOCOMetric', 'COCOMetric2'
 ]
 
 COCO_SIGMAS = np.array([
@@ -582,3 +582,77 @@ class SNIPERCOCOMetric(COCOMetric):
                 'bbox'] if 'bbox' in infer_results else []
 
         super(SNIPERCOCOMetric, self).accumulate()
+
+class COCOMetric2(Metric):
+    def __init__(self, roidbs, cname2cid, **kwargs):
+        self.roidbs = roidbs
+        self.cname2cid = cname2cid
+        self.clsid2catid = {i: v for i, (k, v) in enumerate(self.cname2cid.items())}
+        self.classwise = kwargs.get('classwise', False)
+        self.output_eval = kwargs.get('output_eval', None)
+        self.save_prediction_only = kwargs.get('save_prediction_only', False)
+        # TODO: bias should be unified
+        self.bias = kwargs.get('bias', 0)
+        self.iou_type = kwargs.get('IouType', 'bbox')
+
+        if self.output_eval is not None:
+            Path(self.output_eval).mkdir(exist_ok=True)
+
+        self.save_threshold = kwargs.get('save_threshold', 0)
+
+        self.reset()
+
+    def reset(self):
+        # only bbox and mask evaluation support currently
+        self.results = {'bbox': [], 'mask': [], 'segm': [], 'keypoint': []}
+        self.eval_results = {}
+
+    def update(self, inputs, outputs):
+        outs = {}
+        # outputs Tensor -> numpy.ndarray
+        for k, v in outputs.items():
+            outs[k] = v.numpy() if isinstance(v, paddle.Tensor) else v
+
+        # multi-scale inputs: all inputs have same im_id
+        if isinstance(inputs, typing.Sequence):
+            im_id = inputs[0]['im_id']
+        else:
+            im_id = inputs['im_id']
+        outs['im_id'] = im_id.numpy() if isinstance(im_id,
+                                                    paddle.Tensor) else im_id
+        if 'im_file' in inputs:
+            outs['im_file'] = inputs['im_file']
+
+        infer_results = get_infer_results(
+            outs,
+            self.clsid2catid,
+            bias=self.bias,
+            save_threshold=self.save_threshold)
+        self.results['bbox'] += infer_results[
+            'bbox'] if 'bbox' in infer_results else []
+
+    def accumulate(self):
+        if len(self.results['bbox']) > 0:
+            output = "bbox.json"
+            if self.output_eval:
+                output = os.path.join(self.output_eval, output)
+            with open(output, 'w') as f:
+                json.dump(self.results['bbox'], f)
+                logger.info('The bbox result is saved to bbox.json.')
+
+            if self.save_prediction_only:
+                logger.info('The bbox result is saved to {} and do not '
+                            'evaluate the mAP.'.format(output))
+            else:
+                bbox_stats = cocoapi_eval2(
+                    output,
+                    self.roidbs, self.cname2cid,
+                    classwise=self.classwise)
+                self.eval_results['bbox'] = bbox_stats
+                sys.stdout.flush()
+
+    def log(self):
+        pass
+
+    def get_results(self):
+        return self.eval_results
