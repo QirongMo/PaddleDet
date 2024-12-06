@@ -24,6 +24,11 @@ from . import lc_pan
 from . import custom_pan
 from . import dilated_encoder
 from . import clrnet_fpn
+from . import yolov6_pafpn
+from . import yolov7_pafpn
+from . import rtmdet_pafpn
+from . import yolov8_pafpn
+from . import yolov10_pafpn
 
 from .fpn import *
 from .yolo_fpn import *
@@ -39,3 +44,8 @@ from .custom_pan import *
 from .dilated_encoder import *
 from .channel_mapper import *
 from .clrnet_fpn import *
+from .yolov6_pafpn import *
+from .yolov7_pafpn import *
+from .rtmdet_pafpn import *
+from .yolov8_pafpn import *
+from .yolov10_pafpn import *

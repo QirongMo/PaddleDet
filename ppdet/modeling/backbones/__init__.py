@@ -39,6 +39,11 @@ from . import focalnet
 from . import vit_mae
 from . import hgnet_v2
 from . import clrnet_resnet
+from . import yolov6_efficientrep
+from . import yolov7_elannet
+from . import cspnext
+from . import yolov8_csp_darknet
+from . import yolov10_csp_darknet
 
 from .vgg import *
 from .resnet import *
@@ -68,3 +73,8 @@ from .vitpose import *
 from .vit_mae import *
 from .hgnet_v2 import *
 from .clrnet_resnet import *
+from .yolov6_efficientrep import *
+from .yolov7_elannet import *
+from .cspnext import *
+from .yolov8_csp_darknet import *
+from .yolov10_csp_darknet import *

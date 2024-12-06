@@ -22,9 +22,26 @@ from ppdet.modeling.initializer import conv_init_
 from ..shape_spec import ShapeSpec
 
 __all__ = [
-    'CSPDarkNet', 'BaseConv', 'DWConv', 'BottleNeck', 'SPPLayer', 'SPPFLayer'
+    'CSPDarkNet', 'BaseConv', 'DWConv', 'BottleNeck', 'SPPLayer', 'SPPFLayer', 'get_activation', 'SiLU'
 ]
 
+def get_activation(name="silu"):
+    if name == "silu":
+        module = nn.Silu()
+    elif name == "relu":
+        module = nn.ReLU()
+    elif name in ["LeakyReLU", 'leakyrelu', 'lrelu']:
+        module = nn.LeakyReLU(0.1)
+    else:
+        raise AttributeError("Unsupported act type: {}".format(name))
+    return module
+
+class SiLU(nn.Layer):
+    def __init__(self):
+        super(SiLU, self).__init__()
+
+    def forward(self, x):
+        return x * F.sigmoid(x)
 
 class BaseConv(nn.Layer):
     def __init__(self,
@@ -128,6 +145,7 @@ class BottleNeck(nn.Layer):
                  in_channels,
                  out_channels,
                  shortcut=True,
+                 kernel_sizes=(1, 3),
                  expansion=0.5,
                  depthwise=False,
                  bias=False,
@@ -136,11 +154,16 @@ class BottleNeck(nn.Layer):
         hidden_channels = int(out_channels * expansion)
         Conv = DWConv if depthwise else BaseConv
         self.conv1 = BaseConv(
-            in_channels, hidden_channels, ksize=1, stride=1, bias=bias, act=act)
+            in_channels,
+            hidden_channels,
+            ksize=kernel_sizes[0],
+            stride=1,
+            bias=bias,
+            act=act)
         self.conv2 = Conv(
             hidden_channels,
             out_channels,
-            ksize=3,
+            ksize=kernel_sizes[1],
             stride=1,
             bias=bias,
             act=act)
@@ -149,9 +172,9 @@ class BottleNeck(nn.Layer):
     def forward(self, x):
         y = self.conv2(self.conv1(x))
         if self.add_shortcut:
-            y = y + x
-        return y
-
+            return paddle.add(y, x)
+        else:
+            return y
 
 class SPPLayer(nn.Layer):
     """Spatial Pyramid Pooling (SPP) layer used in YOLOv3-SPP and YOLOX"""

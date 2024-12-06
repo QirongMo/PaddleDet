@@ -30,7 +30,7 @@ import copy
 
 from .adamw import AdamWDL, build_adamwdl
 
-__all__ = ['LearningRate', 'OptimizerBuilder']
+__all__ = ['LearningRate', 'OptimizerBuilder', "YOLOv5LRDecay"]
 
 from ppdet.utils.logger import setup_logger
 logger = setup_logger(__name__)
@@ -360,3 +360,33 @@ class OptimizerBuilder():
                   parameters=params,
                   grad_clip=grad_clip,
                   **optim_args)
+
+
+@serializable
+class YOLOv5LRDecay(object):
+    def __init__(self, max_epochs=300, min_lr_ratio=0.01, use_warmup=True):
+        self.max_epochs = max_epochs
+        self.min_lr_ratio = min_lr_ratio
+        self.use_warmup = use_warmup
+
+    def __call__(self,
+                 base_lr=None,
+                 boundary=None,
+                 value=None,
+                 step_per_epoch=None):
+        assert base_lr is not None, "either base LR or values should be provided"
+
+        max_iters = self.max_epochs * int(step_per_epoch)
+        warmup_iters = int(boundary[-1])
+
+        for i in range(warmup_iters + 1, max_iters):
+            boundary.append(i)
+            epoch_i = i // step_per_epoch - 1
+            if epoch_i == 2:  # TODO
+                epoch_i = epoch_i + 1
+
+            decayed_lr = base_lr * (
+                (1 - epoch_i / self.max_epochs) *
+                (1.0 - self.min_lr_ratio) + self.min_lr_ratio)
+            value.append(decayed_lr)
+        return optimizer.lr.PiecewiseDecay(boundary, value)

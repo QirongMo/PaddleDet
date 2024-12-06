@@ -33,6 +33,8 @@ from . import supcontrast
 from . import queryinst_loss
 from . import clrnet_loss
 from . import clrnet_line_iou_loss
+from . import yolov5_loss
+from . import yolov7_loss
 
 from .yolo_loss import *
 from .iou_aware_loss import *
@@ -56,3 +58,5 @@ from .supcontrast import *
 from .queryinst_loss import *
 from .clrnet_loss import *
 from .clrnet_line_iou_loss import *
+from .yolov5_loss import *
+from .yolov7_loss import *

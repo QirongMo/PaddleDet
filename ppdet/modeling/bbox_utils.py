@@ -396,7 +396,13 @@ def batch_iou_similarity(box1, box2, eps=1e-9):
     return overlap / union
 
 
-def bbox_iou(box1, box2, giou=False, diou=False, ciou=False, eps=1e-9):
+def bbox_iou(box1,
+             box2,
+             x1y1x2y2=True,
+             giou=False,
+             diou=False,
+             ciou=False,
+             eps=1e-9):
     """calculate the iou of box1 and box2
 
     Args:
@@ -410,8 +416,15 @@ def bbox_iou(box1, box2, giou=False, diou=False, ciou=False, eps=1e-9):
     Return:
         iou (Tensor): iou of box1 and box1, with the shape [b, na, h, w, 1]
     """
-    px1, py1, px2, py2 = box1
-    gx1, gy1, gx2, gy2 = box2
+    if x1y1x2y2:
+        px1, py1, px2, py2 = box1
+        gx1, gy1, gx2, gy2 = box2
+    else:  # transform from xywh to xyxy
+        px1, px2 = box1[0] - box1[2] / 2, box1[0] + box1[2] / 2
+        py1, py2 = box1[1] - box1[3] / 2, box1[1] + box1[3] / 2
+        gx1, gx2 = box2[0] - box2[2] / 2, box2[0] + box2[2] / 2
+        gy1, gy2 = box2[1] - box2[3] / 2, box2[1] + box2[3] / 2
+
     x1 = paddle.maximum(px1, gx1)
     y1 = paddle.maximum(py1, gy1)
     x2 = paddle.minimum(px2, gx2)
@@ -452,7 +465,6 @@ def bbox_iou(box1, box2, giou=False, diou=False, ciou=False, eps=1e-9):
                 return iou - (rho2 / c2 + v * alpha)
     else:
         return iou
-
 
 def bbox_iou_np_expand(box1, box2, x1y1x2y2=True, eps=1e-16):
     """
@@ -605,3 +617,6 @@ def iou_similarity(box1, box2, eps=1e-10):
     area2 = (gx2y2 - gx1y1).clip(0).prod(-1)
     union = area1 + area2 - overlap + eps
     return overlap / union
+
+def custom_ceil(x):
+    return int(x + 0.5) if x > 0 else int(x - 0.5)

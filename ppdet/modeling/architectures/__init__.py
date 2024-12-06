@@ -45,6 +45,12 @@ from . import queryinst
 from . import detr_ssod
 from . import multi_stream_detector
 from . import clrnet
+from . import yolov5
+from . import yolov6
+from . import yolov7
+from . import yolov8
+from . import rtmdet
+from . import yolov10
 
 from .meta_arch import *
 from .faster_rcnn import *
@@ -81,3 +87,10 @@ from .keypoint_petr import *
 from .detr_ssod import *
 from .multi_stream_detector import *
 from .clrnet import *
+from .yolov5 import *
+from .yolov6 import *
+from .yolov7 import *
+from .yolov8 import *
+from .rtmdet import *
+from .detr import *
+from .yolov10 import *
