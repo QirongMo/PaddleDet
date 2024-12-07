@@ -44,6 +44,7 @@ from . import yolov7_elannet
 from . import cspnext
 from . import yolov8_csp_darknet
 from . import yolov10_csp_darknet
+from . import yolo11_csp_darknet
 
 from .vgg import *
 from .resnet import *
@@ -78,3 +79,4 @@ from .yolov7_elannet import *
 from .cspnext import *
 from .yolov8_csp_darknet import *
 from .yolov10_csp_darknet import *
+from .yolo11_csp_darknet import *

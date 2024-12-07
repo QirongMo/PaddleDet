@@ -51,6 +51,7 @@ from . import yolov7
 from . import yolov8
 from . import rtmdet
 from . import yolov10
+from . import yolo11
 
 from .meta_arch import *
 from .faster_rcnn import *
@@ -94,3 +95,4 @@ from .yolov8 import *
 from .rtmdet import *
 from .detr import *
 from .yolov10 import *
+from .yolo11 import *

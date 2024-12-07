@@ -29,6 +29,7 @@ from . import yolov7_pafpn
 from . import rtmdet_pafpn
 from . import yolov8_pafpn
 from . import yolov10_pafpn
+from . import yolo11_pafpn
 
 from .fpn import *
 from .yolo_fpn import *
@@ -49,3 +50,4 @@ from .yolov7_pafpn import *
 from .rtmdet_pafpn import *
 from .yolov8_pafpn import *
 from .yolov10_pafpn import *
+from .yolo11_pafpn import *
