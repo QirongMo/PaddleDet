@@ -237,11 +237,13 @@ def _parse_reader(reader_cfg, dataset_cfg, metric, arch, image_shape):
     preprocess_list = []
     label_list = []
     if arch != "lane_arch":
-        anno_file = dataset_cfg.get_anno()
-
-        clsid2catid, catid2name = get_categories(metric, anno_file, arch)
-
-        label_list = [str(cat) for cat in catid2name.values()]
+        if metric.lower() in ['coco2']:
+            label_txt = dataset_cfg.get_label_list()
+            label_list = [line.strip() for line in open(label_txt, 'r')]
+        else:
+            anno_file = dataset_cfg.get_anno()
+            clsid2catid, catid2name = get_categories(metric, anno_file, arch)
+            label_list = [str(cat) for cat in catid2name.values()]
 
     fuse_normalize = reader_cfg.get('fuse_normalize', False)
     sample_transforms = reader_cfg['sample_transforms']
